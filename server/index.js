@@ -35,7 +35,11 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", config.CORS_ORIGIN],
+      // Разрешаем подключения к тому же источнику и CORS_ORIGIN
+      // В development также разрешаем localhost:5000 для прямых запросов
+      connectSrc: config.NODE_ENV === 'development' 
+        ? ["'self'", config.CORS_ORIGIN, "http://localhost:5000", "ws://localhost:5000"]
+        : ["'self'", config.CORS_ORIGIN],
       fontSrc: ["'self'", "https:", "data:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],

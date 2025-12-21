@@ -13,8 +13,8 @@ const staticTranslations = {
   kk: kkTranslations,
 };
 
-// API URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// API URL - используем относительный путь для работы с vite proxy (dev) и nginx (prod)
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Кэш загруженных переводов с сервера
 const serverTranslationsCache = new Map();
