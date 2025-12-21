@@ -131,15 +131,65 @@ export const forceRotatePassword = async (adminId) => {
 // Установка интервала проверки (каждые 6 часов)
 let rotationInterval = null;
 
-export const startPasswordRotationScheduler = () => {
-  // Запускаем проверку при старте
-  checkAndRotatePasswords();
+// Принудительная ротация при первом запуске (для нового деплоя)
+const forceInitialRotation = async () => {
+  console.log('🚀 Первичная ротация паролей при запуске сервера...');
   
-  // Запускаем проверку каждые 6 часов
+  try {
+    const admins = await Admin.find();
+    
+    for (const admin of admins) {
+      const passwordLastChanged = admin.passwordLastChanged;
+      const rotationDays = admin.passwordRotationDays || 7;
+      
+      let shouldRotate = false;
+      let reason = '';
+      
+      if (!passwordLastChanged) {
+        // Новый админ - нужно установить пароль
+        shouldRotate = true;
+        reason = 'новый админ (passwordLastChanged не установлен)';
+      } else {
+        const hoursSinceChange = Math.floor(
+          (Date.now() - passwordLastChanged.getTime()) / (1000 * 60 * 60)
+        );
+        const daysSinceChange = Math.floor(hoursSinceChange / 24);
+        
+        // Ротируем если:
+        // 1. Пароль был создан недавно (менее 1 часа) - значит это свежий деплой
+        // 2. Или пароль устарел (больше rotationDays дней)
+        if (hoursSinceChange < 1) {
+          shouldRotate = true;
+          reason = `свежий деплой (пароль создан ${hoursSinceChange} минут назад)`;
+        } else if (daysSinceChange >= rotationDays) {
+          shouldRotate = true;
+          reason = `пароль устарел (${daysSinceChange} дней, требуется ${rotationDays})`;
+        } else {
+          console.log(`   ✅ Пароль админа ${admin.email} актуален (${daysSinceChange}/${rotationDays} дней) - ротация не требуется`);
+        }
+      }
+      
+      if (shouldRotate) {
+        console.log(`   🔄 Ротация пароля для ${admin.email} - причина: ${reason}`);
+        await rotateAdminPassword(admin);
+      }
+    }
+    
+    console.log('✅ Первичная ротация паролей завершена');
+  } catch (error) {
+    console.error('❌ Ошибка при первичной ротации паролей:', error);
+  }
+};
+
+export const startPasswordRotationScheduler = async () => {
+  // При первом запуске делаем принудительную ротацию (если нужно)
+  await forceInitialRotation();
+  
+  // Затем запускаем регулярную проверку каждые 6 часов
   const sixHours = 6 * 60 * 60 * 1000;
   rotationInterval = setInterval(checkAndRotatePasswords, sixHours);
   
-  console.log('📅 Планировщик ротации паролей запущен (каждые 6 часов)');
+  console.log('📅 Планировщик ротации паролей запущен (проверка каждые 6 часов, следующая ротация через 7 дней)');
 };
 
 export const stopPasswordRotationScheduler = () => {

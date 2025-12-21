@@ -18,10 +18,10 @@ import i18nRoutes from './routes/i18n.js';
 const app = express();
 
 // Подключение к базе данных
-connectDB(config).then(() => {
+connectDB(config).then(async () => {
   // Запускаем планировщик ротации паролей после подключения к БД
   if (config.NODE_ENV !== 'test') {
-    startPasswordRotationScheduler();
+    await startPasswordRotationScheduler();
   }
 });
 
