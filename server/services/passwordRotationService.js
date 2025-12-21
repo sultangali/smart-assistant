@@ -51,8 +51,36 @@ export const rotateAdminPassword = async (admin) => {
     admin.password = newPassword;
     await admin.save();
     
-    // Определяем email для уведомления
-    const notificationEmail = admin.notificationEmail || admin.email;
+    // Определяем email для уведомления с валидацией
+    let notificationEmail = admin.notificationEmail || admin.email;
+    
+    // Проверка валидности email
+    const isValidEmail = (email) => {
+      if (!email || typeof email !== 'string') return false;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email.trim());
+    };
+    
+    // Если email не валидный, используем SMTP_USER как fallback
+    if (!isValidEmail(notificationEmail)) {
+      if (config.SMTP_USER && isValidEmail(config.SMTP_USER)) {
+        console.warn(`⚠️ Email администратора "${notificationEmail}" не валиден, используем SMTP_USER: ${config.SMTP_USER}`);
+        notificationEmail = config.SMTP_USER;
+      } else {
+        console.error(`❌ Невозможно определить валидный email для отправки пароля`);
+        console.error(`   Email в БД: ${admin.email}`);
+        console.error(`   Notification Email: ${admin.notificationEmail || '(не установлен)'}`);
+        console.error(`   SMTP_USER: ${config.SMTP_USER || '(не установлен)'}`);
+        
+        // Логируем пароль в консоль если email не настроен (только для разработки!)
+        if (config.NODE_ENV === 'development') {
+          console.log(`🔐 [DEV] Новый пароль для ${admin.email}: ${newPassword}`);
+          console.log(`   ⚠️ ВНИМАНИЕ: Обновите notificationEmail в базе данных!`);
+        }
+        
+        return { success: false, error: 'Невозможно отправить email: невалидный адрес получателя' };
+      }
+    }
     
     // Отправляем email с новым паролем
     console.log(`📧 Отправка нового пароля на ${notificationEmail}...`);

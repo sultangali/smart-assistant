@@ -184,8 +184,22 @@ const passwordExpirationWarningTemplate = (email, daysLeft) => ({
   `,
 });
 
+// Валидация email адреса
+const isValidEmail = (email) => {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
 // Отправка email
 export const sendEmail = async (to, template) => {
+  // Валидация получателя
+  if (!to || !isValidEmail(to)) {
+    const errorMsg = `Некорректный email адрес получателя: ${to}`;
+    console.error('❌ Ошибка:', errorMsg);
+    return { success: false, message: errorMsg };
+  }
+  
   const transporter = createTransporter();
   
   if (!transporter) {
@@ -196,9 +210,20 @@ export const sendEmail = async (to, template) => {
   }
   
   try {
+    // Формируем адрес отправителя
+    const fromEmail = config.SMTP_FROM && isValidEmail(config.SMTP_FROM) 
+      ? config.SMTP_FROM 
+      : config.SMTP_USER;
+    
+    if (!fromEmail || !isValidEmail(fromEmail)) {
+      const errorMsg = 'Некорректный email адрес отправителя. Проверьте SMTP_FROM или SMTP_USER';
+      console.error('❌ Ошибка:', errorMsg);
+      return { success: false, message: errorMsg };
+    }
+    
     const mailOptions = {
-      from: `"Smart Assistant" <${config.SMTP_FROM || config.SMTP_USER}>`,
-      to,
+      from: `"Smart Assistant" <${fromEmail}>`,
+      to: to.trim(),
       subject: template.subject,
       html: template.html,
       text: template.text,

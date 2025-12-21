@@ -14,7 +14,8 @@
     "seed:content": "node db/seeders/contentSeeder.js",
     "extract-content": "node scripts/extractContent.js",
     "test-i18n": "node scripts/testI18nAPI.js",
-    "test-email": "node test-email.js"
+    "test-email": "node test-email.js",
+    "update-admin-email": "node update-admin-email.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

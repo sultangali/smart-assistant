@@ -42,14 +42,41 @@ const testEmailSending = async () => {
       return;
     }
     
-    const testEmail = admin.notificationEmail || admin.email;
     console.log('\n👤 Администратор найден:');
-    console.log('   Email:', admin.email);
-    console.log('   Notification Email:', testEmail);
+    console.log('   Email в БД:', admin.email);
+    console.log('   Notification Email в БД:', admin.notificationEmail || '(не установлен)');
+    
+    // Функция проверки валидности email
+    const isValidEmail = (email) => {
+      if (!email || typeof email !== 'string') return false;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+    
+    // Определяем email для отправки
+    let testEmail = admin.notificationEmail || admin.email;
+    
+    // Если email не валидный, используем SMTP_USER или спрашиваем у пользователя
+    if (!isValidEmail(testEmail)) {
+      console.log('\n⚠️  Email адрес администратора в БД не валиден:', testEmail);
+      
+      if (config.SMTP_USER && isValidEmail(config.SMTP_USER)) {
+        testEmail = config.SMTP_USER;
+        console.log('   Используем SMTP_USER как получателя:', testEmail);
+        console.log('   (Рекомендуется обновить notificationEmail в базе данных)');
+      } else {
+        console.log('\n❌ Невозможно определить валидный email адрес для отправки');
+        console.log('   Установите notificationEmail в базе данных или используйте валидный SMTP_USER');
+        await mongoose.disconnect();
+        return;
+      }
+    }
+    
+    console.log('\n📧 Получатель email:', testEmail);
     
     // Генерируем тестовый пароль
     const testPassword = Admin.generateSecurePassword(16);
-    console.log('\n🔐 Тестовый пароль:', testPassword);
+    console.log('🔐 Тестовый пароль:', testPassword);
     
     // Отправляем тестовый email
     console.log('\n📧 Отправка тестового email...');
