@@ -264,9 +264,194 @@ export const sendPasswordExpirationWarning = async (email, daysLeft) => {
   return sendEmail(email, template);
 };
 
+// Шаблон письма о новой обратной связи для админа
+const newFeedbackTemplate = (feedback) => {
+  const typeLabels = {
+    complaint: 'Жалоба',
+    suggestion: 'Предложение',
+    question: 'Вопрос',
+    other: 'Другое',
+  };
+  
+  return {
+    subject: `📝 Новая обратная связь: ${typeLabels[feedback.type] || feedback.type}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Новая обратная связь</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+          .content { padding: 30px; }
+          .info-box { background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; }
+          .info-row { margin: 10px 0; }
+          .info-label { font-weight: bold; color: #333; }
+          .message-box { background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 15px; margin: 20px 0; white-space: pre-wrap; }
+          .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📝 Новая обратная связь</h1>
+          </div>
+          <div class="content">
+            <h2>Здравствуйте!</h2>
+            <p>Вы получили новое сообщение обратной связи на сайте Smart Assistant.</p>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">От кого:</span> ${feedback.name}
+              </div>
+              <div class="info-row">
+                <span class="info-label">Email:</span> ${feedback.email}
+              </div>
+              <div class="info-row">
+                <span class="info-label">Тип:</span> ${typeLabels[feedback.type] || feedback.type}
+              </div>
+              <div class="info-row">
+                <span class="info-label">Дата:</span> ${new Date(feedback.createdAt).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}
+              </div>
+            </div>
+            
+            <h3>Сообщение:</h3>
+            <div class="message-box">
+${feedback.message}
+            </div>
+            
+            <p style="text-align: center;">
+              <a href="${config.CORS_ORIGIN}/admin/feedback" class="button">Перейти в админ панель</a>
+            </p>
+          </div>
+          <div class="footer">
+            <p>Это автоматическое сообщение от системы Smart Assistant.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Новая обратная связь: ${typeLabels[feedback.type] || feedback.type}
+      
+      От: ${feedback.name} (${feedback.email})
+      Дата: ${new Date(feedback.createdAt).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}
+      
+      Сообщение:
+      ${feedback.message}
+      
+      Перейти в админ панель: ${config.CORS_ORIGIN}/admin/feedback
+    `,
+  };
+};
+
+// Шаблон ответа админа пользователю
+const adminReplyTemplate = (feedback, adminNotes) => {
+  const statusLabels = {
+    new: 'Новое',
+    in_progress: 'В работе',
+    resolved: 'Решено',
+    closed: 'Закрыто',
+  };
+  
+  return {
+    subject: `💬 Ответ на ваше обращение в Smart Assistant`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ответ на обращение</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+          .content { padding: 30px; }
+          .reply-box { background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; white-space: pre-wrap; }
+          .original-message { background-color: #f8f9fa; border-left: 4px solid #ccc; padding: 15px; margin: 20px 0; }
+          .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 10px 0; }
+          .status-resolved { background-color: #4caf50; color: white; }
+          .status-in_progress { background-color: #ff9800; color: white; }
+          .status-closed { background-color: #9e9e9e; color: white; }
+          .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>💬 Ответ на ваше обращение</h1>
+          </div>
+          <div class="content">
+            <h2>Здравствуйте, ${feedback.name}!</h2>
+            <p>Спасибо за ваше обращение. Администратор ответил на ваше сообщение:</p>
+            
+            <div class="reply-box">
+${adminNotes}
+            </div>
+            
+            <div style="margin: 20px 0;">
+              <strong>Статус обращения:</strong>
+              <span class="status-badge status-${feedback.status}">${statusLabels[feedback.status] || feedback.status}</span>
+            </div>
+            
+            <div class="original-message">
+              <strong>Ваше сообщение:</strong><br>
+              ${feedback.message}
+            </div>
+            
+            <p>Если у вас остались вопросы, пожалуйста, свяжитесь с нами.</p>
+          </div>
+          <div class="footer">
+            <p>С уважением, команда Smart Assistant</p>
+            <p>Это автоматическое сообщение, пожалуйста, не отвечайте на него.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Ответ на ваше обращение в Smart Assistant
+      
+      Здравствуйте, ${feedback.name}!
+      
+      Спасибо за ваше обращение. Администратор ответил на ваше сообщение:
+      
+      ${adminNotes}
+      
+      Статус обращения: ${statusLabels[feedback.status] || feedback.status}
+      
+      Ваше сообщение:
+      ${feedback.message}
+      
+      С уважением, команда Smart Assistant
+    `,
+  };
+};
+
+// Отправка уведомления о новой обратной связи админу
+export const sendNewFeedbackNotification = async (adminEmail, feedback) => {
+  const template = newFeedbackTemplate(feedback);
+  return sendEmail(adminEmail, template);
+};
+
+// Отправка ответа админа пользователю
+export const sendAdminReplyToUser = async (userEmail, feedback, adminNotes) => {
+  const template = adminReplyTemplate(feedback, adminNotes);
+  return sendEmail(userEmail, template);
+};
+
 export default {
   sendEmail,
   sendNewPasswordEmail,
   sendPasswordExpirationWarning,
+  sendNewFeedbackNotification,
+  sendAdminReplyToUser,
 };
 
