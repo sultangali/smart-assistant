@@ -39,8 +39,15 @@ main() {
     echo "============================================================"
     echo ""
     
-    # Получаем IP
-    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+    # Получаем IP (используем предустановленный IP по умолчанию)
+    DEFAULT_SERVER_IP="34.88.173.3"
+    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "$DEFAULT_SERVER_IP")
+    
+    # Если автоматическое определение не удалось, используем дефолтный IP
+    if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" = "" ]; then
+        SERVER_IP="$DEFAULT_SERVER_IP"
+    fi
+    
     log_info "IP адрес сервера: $SERVER_IP"
     
     # Запрашиваем домен
