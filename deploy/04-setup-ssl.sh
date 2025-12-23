@@ -286,8 +286,11 @@ update_server_config() {
         sed -i "s|CORS_ORIGIN=.*|CORS_ORIGIN=https://$DOMAIN|g" $ENV_FILE
     fi
     
-    # Перезапускаем приложение
-    pm2 restart $APP_NAME 2>/dev/null || true
+    # Перезапускаем приложение через ecosystem config
+    cd $APP_DIR
+    pm2 delete $APP_NAME 2>/dev/null || true
+    pm2 start ecosystem.config.cjs --env production 2>/dev/null || true
+    pm2 save
     
     log_success "Конфигурация обновлена"
 }

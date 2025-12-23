@@ -20,8 +20,7 @@ module.exports = {
       max_memory_restart: '1G',
       
       // Переменные окружения
-      // Загружаем из .env файла в server директории
-      env_file: './server/.env',
+      // dotenv.config() в коде автоматически загрузит переменные из ./server/.env
       env: {
         NODE_ENV: 'production',
         PORT: 5000,
