@@ -39,15 +39,8 @@ main() {
     echo "============================================================"
     echo ""
     
-    # Получаем IP (используем предустановленный IP по умолчанию)
-    DEFAULT_SERVER_IP="34.88.173.3"
-    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "$DEFAULT_SERVER_IP")
-    
-    # Если автоматическое определение не удалось, используем дефолтный IP
-    if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" = "" ]; then
-        SERVER_IP="$DEFAULT_SERVER_IP"
-    fi
-    
+    # Получаем IP
+    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
     log_info "IP адрес сервера: $SERVER_IP"
     
     # Запрашиваем домен
@@ -59,25 +52,16 @@ main() {
         exit 1
     fi
     
-    # Проверяем DNS (если dig доступен)
+    # Проверяем DNS
     log_info "Проверка DNS..."
-    if command -v dig &> /dev/null; then
-        DOMAIN_IP=$(dig +short $DOMAIN_NAME | tail -n1)
-        
-        if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
-            log_warning "DNS записи могут быть не настроены!"
-            log_warning "Домен $DOMAIN_NAME -> $DOMAIN_IP"
-            log_warning "Сервер IP: $SERVER_IP"
-            echo ""
-            echo "Убедитесь что A-запись домена указывает на $SERVER_IP"
-            read -p "Продолжить? (y/n): " CONTINUE
-            if [ "$CONTINUE" != "y" ]; then
-                exit 1
-            fi
-        fi
-    else
-        log_warning "dig не установлен, пропускаем проверку DNS"
-        log_warning "Убедитесь что A-запись домена $DOMAIN_NAME указывает на $SERVER_IP"
+    DOMAIN_IP=$(dig +short $DOMAIN_NAME | tail -n1)
+    
+    if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+        log_warning "DNS записи могут быть не настроены!"
+        log_warning "Домен $DOMAIN_NAME -> $DOMAIN_IP"
+        log_warning "Сервер IP: $SERVER_IP"
+        echo ""
+        echo "Убедитесь что A-запись домена указывает на $SERVER_IP"
         read -p "Продолжить? (y/n): " CONTINUE
         if [ "$CONTINUE" != "y" ]; then
             exit 1
@@ -96,7 +80,7 @@ upstream smart_assistant_backend {
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAIN_NAME;
+    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
 
     root $APP_DIR/client/dist;
     index index.html;
@@ -128,19 +112,11 @@ server {
 }
 EOF
 
-    # Активируем конфигурацию (создаем симлинк)
-    ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/$APP_NAME
-    
-    # Удаляем старую SSL конфигурацию, если она существует (чтобы избежать конфликтов)
-    if [ -f /etc/nginx/sites-enabled/${APP_NAME}-ssl ]; then
-        rm -f /etc/nginx/sites-enabled/${APP_NAME}-ssl
-    fi
-    
     nginx -t && systemctl reload nginx
     
-    # Получаем SSL (только для основного домена, без www)
-    log_info "Получение Let's Encrypt сертификата для $DOMAIN_NAME..."
-    certbot --nginx -d $DOMAIN_NAME --email $CERT_EMAIL --agree-tos --non-interactive --redirect
+    # Получаем SSL
+    log_info "Получение Let's Encrypt сертификата..."
+    certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME --email $CERT_EMAIL --agree-tos --non-interactive --redirect
     
     # Обновляем .env
     log_info "Обновление конфигурации приложения..."
