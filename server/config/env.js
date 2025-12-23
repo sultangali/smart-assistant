@@ -15,7 +15,7 @@ export const config = {
   JWT_EXPIRE: process.env.JWT_EXPIRE || '7d',
   
   // Администратор
-  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'gab1m1ll3r@gmail.com',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'admin123!',
   ADMIN_NOTIFICATION_EMAIL: process.env.ADMIN_NOTIFICATION_EMAIL || '',
   

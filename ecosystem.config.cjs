@@ -20,8 +20,10 @@ module.exports = {
       max_memory_restart: '1G',
       
       // Переменные окружения
+      // Загружаем из .env файла в server директории
+      env_file: './server/.env',
       env: {
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
         PORT: 5000,
       },
       env_production: {
