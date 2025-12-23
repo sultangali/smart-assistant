@@ -33,15 +33,72 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Проверка SSH ключа для GitHub
-check_ssh_key() {
-    log_info "Проверка SSH ключа для GitHub..."
+# Проверка доступа к GitHub репозиторию
+check_github_access() {
+    log_info "Проверка доступа к GitHub репозиторию..."
     
+    # Создаем директорию .ssh если её нет
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    
+    # Добавляем GitHub в known_hosts
+    if [ ! -f ~/.ssh/known_hosts ] || ! grep -q "github.com" ~/.ssh/known_hosts 2>/dev/null; then
+        ssh-keyscan -t rsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+        chmod 600 ~/.ssh/known_hosts
+    fi
+    
+    # Проверяем доступ к репозиторию через SSH
+    log_info "Проверка SSH доступа к GitHub..."
+    SSH_TEST=$(ssh -T git@github.com 2>&1)
+    if echo "$SSH_TEST" | grep -q "successfully authenticated" || ! echo "$SSH_TEST" | grep -q "Permission denied"; then
+        log_success "SSH доступ к GitHub настроен"
+        GIT_REPO="git@github.com:sultangali/smart-assistant.git"
+        return 0
+    fi
+    
+    # Если SSH не работает, предлагаем HTTPS
+    log_warning "SSH доступ к GitHub не настроен"
+    echo ""
+    echo "Выберите способ доступа к репозиторию:"
+    echo "1. Настроить SSH (рекомендуется для постоянного использования)"
+    echo "2. Использовать HTTPS (проще, но может потребовать токен)"
+    read -p "Выберите вариант (1/2): " ACCESS_METHOD
+    
+    if [ "$ACCESS_METHOD" = "1" ]; then
+        setup_ssh_key
+        # Проверяем снова
+        SSH_TEST=$(ssh -T git@github.com 2>&1)
+        if echo "$SSH_TEST" | grep -q "successfully authenticated" || ! echo "$SSH_TEST" | grep -q "Permission denied"; then
+            log_success "SSH доступ настроен"
+            GIT_REPO="git@github.com:sultangali/smart-assistant.git"
+            return 0
+        else
+            log_error "SSH ключ не добавлен в GitHub. Используем HTTPS..."
+            GIT_REPO="https://github.com/sultangali/smart-assistant.git"
+            return 0
+        fi
+    else
+        GIT_REPO="https://github.com/sultangali/smart-assistant.git"
+        log_info "Используется HTTPS для клонирования репозитория"
+        log_warning "Если репозиторий приватный, может потребоваться Personal Access Token"
+        return 0
+    fi
+}
+
+# Настройка SSH ключа
+setup_ssh_key() {
     if [ ! -f ~/.ssh/id_rsa ] && [ ! -f ~/.ssh/id_ed25519 ]; then
-        log_warning "SSH ключ не найден. Создаём новый..."
+        log_info "Создание SSH ключа..."
         
         read -p "Введите ваш email для SSH ключа: " SSH_EMAIL
-        ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f ~/.ssh/id_ed25519 -N ""
+        if [ -z "$SSH_EMAIL" ]; then
+            SSH_EMAIL="admin@smart-assistant"
+        fi
+        
+        ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f ~/.ssh/id_ed25519 -N "" -q
+        
+        chmod 600 ~/.ssh/id_ed25519
+        chmod 644 ~/.ssh/id_ed25519.pub
         
         echo ""
         echo "============================================================"
@@ -55,27 +112,56 @@ check_ssh_key() {
         echo "3. Нажмите 'New SSH key' и вставьте ключ"
         echo ""
         read -p "Нажмите Enter после добавления ключа в GitHub..."
+    else
+        log_info "SSH ключ уже существует. Отображаем публичный ключ:"
+        echo ""
+        if [ -f ~/.ssh/id_ed25519.pub ]; then
+            cat ~/.ssh/id_ed25519.pub
+        elif [ -f ~/.ssh/id_rsa.pub ]; then
+            cat ~/.ssh/id_rsa.pub
+        fi
+        echo ""
+        echo "Убедитесь, что этот ключ добавлен в GitHub:"
+        echo "https://github.com/settings/keys"
+        echo ""
+        read -p "Нажмите Enter для продолжения..."
     fi
-    
-    # Добавляем GitHub в known_hosts
-    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
-    
-    log_success "SSH ключ настроен"
 }
 
 # Клонирование или обновление репозитория
 clone_or_update_repo() {
-    log_info "Работа с репозиторием..."
+    log_info "Работа с репозиторием ($GIT_REPO)..."
     
     if [ -d "$APP_DIR/.git" ]; then
         log_info "Репозиторий существует, обновляем..."
         cd $APP_DIR
+        
+        # Проверяем текущий remote URL
+        CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+        
+        # Если remote изменился, обновляем его
+        if [ "$CURRENT_REMOTE" != "$GIT_REPO" ]; then
+            log_info "Обновление remote URL..."
+            git remote set-url origin $GIT_REPO
+        fi
+        
         git fetch origin
         git reset --hard origin/$GIT_BRANCH
         git pull origin $GIT_BRANCH
     else
         log_info "Клонирование репозитория..."
-        rm -rf $APP_DIR/*
+        
+        # Создаем директорию если её нет
+        mkdir -p $APP_DIR
+        cd $APP_DIR
+        
+        # Если директория не пустая (но не git репозиторий), очищаем
+        if [ "$(ls -A $APP_DIR 2>/dev/null)" ]; then
+            log_warning "Директория не пуста, очищаем..."
+            rm -rf $APP_DIR/*
+            rm -rf $APP_DIR/.[!.]* 2>/dev/null || true
+        fi
+        
         git clone -b $GIT_BRANCH $GIT_REPO $APP_DIR
     fi
     
@@ -251,7 +337,7 @@ main() {
     echo "============================================================"
     echo ""
     
-    check_ssh_key
+    check_github_access
     clone_or_update_repo
     install_server_deps
     build_client
