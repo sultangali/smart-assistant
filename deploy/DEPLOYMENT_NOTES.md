@@ -42,3 +42,5 @@ sudo ./06-update-domain.sh
 - SSL сертификат (Let's Encrypt)
 - CORS_ORIGIN в .env
 
+
+
