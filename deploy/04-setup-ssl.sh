@@ -97,14 +97,60 @@ get_letsencrypt_cert() {
     
     log_info "Получение сертификата Let's Encrypt для $DOMAIN_NAME..."
     
-    # Проверяем что домен указывает на этот сервер
-    DOMAIN_IP=$(dig +short $DOMAIN_NAME | tail -n1)
-    
-    if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
-        log_warning "DNS записи могут быть не настроены!"
-        log_warning "Домен $DOMAIN_NAME -> $DOMAIN_IP"
-        log_warning "Сервер IP: $SERVER_IP"
+    # Проверяем что домен указывает на этот сервер (если dig доступен)
+    if command -v dig &> /dev/null; then
+        DOMAIN_IP=$(dig +short $DOMAIN_NAME | tail -n1)
+        
+        if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+            log_warning "DNS записи могут быть не настроены!"
+            log_warning "Домен $DOMAIN_NAME -> $DOMAIN_IP"
+            log_warning "Сервер IP: $SERVER_IP"
+            read -p "Продолжить? (y/n): " CONTINUE
+            if [ "$CONTINUE" != "y" ]; then
+                exit 1
+            fi
+        fi
+    else
+        log_warning "dig не установлен, пропускаем проверку DNS"
+        log_warning "Убедитесь что A-запись домена $DOMAIN_NAME указывает на $SERVER_IP"
         read -p "Продолжить? (y/n): " CONTINUE
+        if [ "$CONTINUE" != "y" ]; then
+            exit 1
+        fi
+    fi
+    
+    # Проверяем/создаем директорию для acme-challenge
+    mkdir -p /var/www/certbot
+    chmod 755 /var/www/certbot
+    
+    # Проверяем файрвол
+    log_info "Проверка файрвола..."
+    if command -v ufw &> /dev/null; then
+        if ufw status | grep -q "Status: active"; then
+            log_info "Файрвол активен, проверяем порты 80 и 443..."
+            ufw allow 80/tcp 2>/dev/null || true
+            ufw allow 443/tcp 2>/dev/null || true
+            log_success "Порты 80 и 443 открыты в файрволе"
+        fi
+    fi
+    
+    # Убеждаемся что Nginx настроен для acme-challenge
+    ensure_acme_challenge_config $DOMAIN_NAME
+    
+    # Проверяем что Nginx работает и слушает порт 80
+    if ! systemctl is-active --quiet nginx; then
+        log_error "Nginx не запущен. Запускаем..."
+        systemctl start nginx
+    fi
+    
+    log_info "Проверяем что порт 80 доступен извне..."
+    if ! curl -s -m 5 http://$DOMAIN_NAME > /dev/null 2>&1; then
+        log_warning "Домен $DOMAIN_NAME недоступен по HTTP"
+        log_warning "Убедитесь что:"
+        log_warning "  1. DNS A-запись домена указывает на $SERVER_IP"
+        log_warning "  2. Порт 80 открыт в файрволе и у провайдера"
+        log_warning "  3. Nginx слушает на порту 80"
+        read -p "Продолжить несмотря на предупреждение? (y/n): " CONTINUE
         if [ "$CONTINUE" != "y" ]; then
             exit 1
         fi
@@ -143,6 +189,89 @@ activate_ssl_config() {
     nginx -t && systemctl reload nginx
     
     log_success "SSL конфигурация активирована"
+}
+
+# Обеспечиваем наличие конфигурации для acme-challenge
+ensure_acme_challenge_config() {
+    local DOMAIN=$1
+    local CONFIG_FILE="$NGINX_ENABLED/$APP_NAME"
+    
+    log_info "Проверка конфигурации Nginx для acme-challenge..."
+    
+    # Если конфигурация существует, проверяем наличие location для acme-challenge
+    if [ -f "$CONFIG_FILE" ]; then
+        if ! grep -q "/.well-known/acme-challenge/" "$CONFIG_FILE"; then
+            log_info "Добавление location для acme-challenge в конфигурацию Nginx..."
+            
+            # Простое добавление location перед первым location блоком
+            sed -i '/^[[:space:]]*location[[:space:]]/{i\
+    location /.well-known/acme-challenge/ {\
+        root /var/www/certbot;\
+    }\
+' -e ':a;n;ba}' "$CONFIG_FILE" 2>/dev/null || {
+                # Если sed не сработал, используем другой метод
+                # Добавляем перед server_name или после него
+                sed -i '/server_name/a\
+\
+    location /.well-known/acme-challenge/ {\
+        root /var/www/certbot;\
+    }' "$CONFIG_FILE"
+            }
+        fi
+    else
+        # Создаем базовую конфигурацию для HTTP с acme-challenge
+        log_info "Создание базовой HTTP конфигурации для acme-challenge..."
+        mkdir -p "$NGINX_AVAILABLE"
+        cat > "$NGINX_AVAILABLE/$APP_NAME" << 'EOFCONFIG'
+upstream smart_assistant_backend {
+    server 127.0.0.1:5000;
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name DOMAIN_PLACEHOLDER;
+
+    root APP_DIR_PLACEHOLDER/client/dist;
+    index index.html;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location /api {
+        proxy_pass http://smart_assistant_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOFCONFIG
+        # Заменяем плейсхолдеры
+        sed -i "s|DOMAIN_PLACEHOLDER|$DOMAIN|g" "$NGINX_AVAILABLE/$APP_NAME"
+        sed -i "s|APP_DIR_PLACEHOLDER|$APP_DIR|g" "$NGINX_AVAILABLE/$APP_NAME"
+        
+        mkdir -p "$NGINX_ENABLED"
+        ln -sf "$NGINX_AVAILABLE/$APP_NAME" "$NGINX_ENABLED/$APP_NAME"
+    fi
+    
+    # Проверяем конфигурацию и перезагружаем Nginx
+    if nginx -t; then
+        systemctl reload nginx
+        log_success "Конфигурация Nginx обновлена для acme-challenge"
+    else
+        log_error "Ошибка в конфигурации Nginx"
+        exit 1
+    fi
 }
 
 # Обновление конфигурации сервера
