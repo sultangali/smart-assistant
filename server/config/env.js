@@ -1,6 +1,19 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Получаем директорию текущего файла (для ES модулей)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Загружаем .env файл из директории server (родительская директория config)
+const envPath = path.resolve(__dirname, '..', '.env');
+const result = dotenv.config({ path: envPath });
+
+// Предупреждение если .env файл не найден (но не критично - можно использовать переменные окружения системы)
+if (result.error && result.error.code !== 'ENOENT') {
+  console.warn(`⚠️ Предупреждение при загрузке .env: ${result.error.message}`);
+}
 
 export const config = {
   // Основные настройки
