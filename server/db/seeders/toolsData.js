@@ -2483,9 +2483,30 @@ export const convertToTools = (language = 'ru') => {
       subcategoryData.tools.forEach((tool, index) => {
         tools.push({
           title: tool.name,
+          // Основное описание на выбранном языке
           description: tool.purpose[language],
+          // Многоязычные описания
+          descriptions: {
+            ru: tool.purpose.ru,
+            en: tool.purpose.en,
+            kk: tool.purpose.kk
+          },
+          // Функции на выбранном языке
           functions: tool.functions[language],
+          // Многоязычные функции
+          functionsMultilang: {
+            ru: tool.functions.ru,
+            en: tool.functions.en,
+            kk: tool.functions.kk
+          },
+          // Назначение на выбранном языке
           purpose: tool.purpose[language],
+          // Многоязычные назначения
+          purposes: {
+            ru: tool.purpose.ru,
+            en: tool.purpose.en,
+            kk: tool.purpose.kk
+          },
           // ВАЖНО: сохраняем КЛЮЧИ вместо переведенных названий
           category: categoryKey,
           subcategory: subcategoryKey,
