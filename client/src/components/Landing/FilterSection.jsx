@@ -44,6 +44,11 @@ const FilterSection = () => {
   };
 
   const handleFilterChange = (name, value) => {
+    // Очистить ошибку при изменении фильтров
+    if (error) {
+      setError('');
+    }
+    
     setFilters(prev => {
       const newFilters = {
         ...prev,
@@ -62,10 +67,14 @@ const FilterSection = () => {
   };
 
   const handleSearch = () => {
-    if (!filters.category) {
+    // Проверка категории (кнопка уже disabled, но на всякий случай)
+    if (!filters.category || filters.category.trim() === '') {
       setError('Пожалуйста, выберите категорию');
       return;
     }
+    
+    // Очистить ошибку перед поиском
+    setError('');
     
     // Формирование параметров поиска
     const searchParams = new URLSearchParams();
@@ -180,7 +189,7 @@ const FilterSection = () => {
                     type="button"
                     className={`filter-btn filter-btn-primary filter-btn-${currentTheme}`}
                     onClick={handleSearch}
-                    disabled={loading}
+                    disabled={loading || !filters.category}
                   >
                     <svg 
                       className="filter-btn-icon" 

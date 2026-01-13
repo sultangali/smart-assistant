@@ -224,13 +224,12 @@ export const AppNavbar = () => {
       <Container>
         <Navbar.Brand as={Link} to="/" className="brand-enhanced">
           <div className="brand-container">
-            <div className="brand-icon">
-              <span className="brand-emoji">🤖</span>
-            </div>
             <div className="brand-text">
-              <span className="brand-main">Smart</span>
-              <span className="brand-accent">Assistant</span>
-              <div className="brand-tagline">AI Tools Hub</div>
+              <div className="brand-main-line">
+                <span className="brand-main">AI</span>
+                <span className="brand-accent">guide</span>
+              </div>
+              <div className="brand-tagline">tools hub</div>
             </div>
           </div>
         </Navbar.Brand>

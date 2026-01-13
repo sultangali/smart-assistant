@@ -149,6 +149,11 @@ const ToolsResults = () => {
   };
 
   const handleFilterChange = (name, value) => {
+    // Очистить ошибку при изменении фильтров
+    if (error) {
+      setError('');
+    }
+    
     setFilters(prev => {
       const newFilters = {
         ...prev,
@@ -173,10 +178,14 @@ const ToolsResults = () => {
   };
 
   const handleSearch = () => {
-    if (!filters.category) {
+    // Проверка категории (кнопка уже disabled, но на всякий случай)
+    if (!filters.category || filters.category.trim() === '') {
       setError(t('landing.filter.category') + ' ' + t('common.error'));
       return;
     }
+    
+    // Очистить ошибку перед поиском
+    setError('');
     
     // Формирование параметров поиска
     const newSearchParams = new URLSearchParams();
@@ -186,7 +195,6 @@ const ToolsResults = () => {
     if (filters.purpose) newSearchParams.set('purpose', filters.purpose);
     
     setSearchParams(newSearchParams);
-    setError('');
   };
 
   const handleReset = () => {
@@ -333,7 +341,7 @@ const ToolsResults = () => {
                         type="button"
                         className={`filter-btn filter-btn-primary filter-btn-${currentTheme}`}
                         onClick={handleSearch}
-                        disabled={filterLoading}
+                        disabled={filterLoading || !filters.category}
                       >
                         <svg 
                           className="filter-btn-icon" 
