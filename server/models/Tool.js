@@ -76,11 +76,24 @@ const ToolSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      index: true, // Индекс для быстрого поиска по ключу категории
     },
     subcategory: {
       type: String,
       default: 'Все подкатегории',
       trim: true,
+      index: true, // Индекс для быстрого поиска по ключу подкатегории
+    },
+    // Переведенные названия для отображения
+    categoryName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    subcategoryName: {
+      type: String,
+      trim: true,
+      default: '',
     },
     link: {
       type: String, // ссылка на официальный сайт

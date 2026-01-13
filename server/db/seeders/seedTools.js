@@ -42,8 +42,8 @@ const seedTools = async () => {
     // Проверка по категориям
     console.log('\n📋 Распределение по категориям:');
     for (const [categoryKey, categoryData] of Object.entries(toolsDatabase)) {
-      const count = await Tool.countDocuments({ categoryKey });
-      console.log(`   - ${categoryData.category.ru}: ${count} инструментов`);
+      const count = await Tool.countDocuments({ category: categoryKey });
+      console.log(`   - ${categoryData.category.ru} (${categoryKey}): ${count} инструментов`);
     }
     
     console.log('\n🎉 База данных успешно заполнена!\n');

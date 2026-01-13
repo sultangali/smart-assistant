@@ -2486,8 +2486,12 @@ export const convertToTools = (language = 'ru') => {
           description: tool.purpose[language],
           functions: tool.functions[language],
           purpose: tool.purpose[language],
-          category: categoryName,
-          subcategory: subcategoryName,
+          // ВАЖНО: сохраняем КЛЮЧИ вместо переведенных названий
+          category: categoryKey,
+          subcategory: subcategoryKey,
+          // Добавляем переводы для отображения
+          categoryName: categoryName,
+          subcategoryName: subcategoryName,
           link: tool.link,
           color: tool.color,
           sources: subcategoryData.sources,
