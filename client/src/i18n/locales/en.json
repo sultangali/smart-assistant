@@ -145,29 +145,29 @@
     "found_tools": "Tools found"
   },
   "categories": {
-    "Персонализированное обучение": "Personalized Learning",
-    "Интерактивные и опытно-ориентированные технологии": "Interactive and Experience-Based Technologies",
-    "Технологические платформы и инструменты для разработки образовательных решений": "Technological Platforms and Tools for Educational Solutions Development",
-    "Оценка и обратная связь": "Assessment and Feedback",
-    "Инклюзия и доступность": "Inclusion and Accessibility",
-    "Создание образовательного контента": "Educational Content Creation",
-    "Поддержка обучения (виртуальные ассистенты и платформы)": "Learning Support (Virtual Assistants and Platforms)"
+    "personalized_learning": "Personalized Learning",
+    "interactive_technologies": "Interactive and Experience-Oriented Technologies",
+    "tech_platforms": "Technological Platforms and Tools for Educational Solutions Development",
+    "assessment_feedback": "Assessment and Feedback",
+    "inclusion_accessibility": "Inclusion and Accessibility",
+    "content_creation_category": "Educational Content Creation",
+    "learning_support": "Learning Support (Virtual Assistants and Platforms)"
   },
   "subcategories": {
-    "Адаптивное обучение": "Adaptive Learning",
-    "Образовательная аналитика": "Educational Analytics",
-    "Игровые и иммерсивные технологии": "Gaming and Immersive Technologies",
-    "Виртуальные лаборатории и симуляции": "Virtual Laboratories and Simulations",
-    "Платформы для создания контента": "Content Creation Platforms",
-    "Образовательные среды и LMS интеграции": "Educational Environments and LMS Integrations",
-    "Автоматизированное оценивание": "Automated Assessment",
-    "Таблицы и аналитика успеваемости": "Performance Tables and Analytics",
-    "Поддержка доступного обучения": "Accessible Learning Support",
-    "Инклюзивные технологии": "Inclusive Technologies",
-    "Генерация текстовой информации": "Text Information Generation",
-    "Создание аудио и видео контента": "Audio and Video Content Creation",
-    "Виртуальные ассистенты": "Virtual Assistants",
-    "Платформы управления образовательной средой": "Educational Environment Management Platforms"
+    "adaptive_learning": "Adaptive Learning",
+    "educational_analytics": "Educational Analytics",
+    "gaming_immersive": "Gaming and Immersive Technologies",
+    "virtual_labs": "Virtual Laboratories and Simulations",
+    "content_creation": "Content Creation Platforms",
+    "lms_integration": "Educational Environments and LMS Integrations",
+    "automated_grading": "Automated Grading",
+    "performance_analytics": "Tables and Performance Analytics",
+    "accessible_learning": "Accessible Learning Support",
+    "inclusive_tech": "Inclusive Technologies",
+    "text_generation": "Text Information Generation",
+    "audio_video_creation": "Audio and Video Content Creation",
+    "virtual_assistants": "Virtual Assistants",
+    "educational_management": "Educational Environment Management Platforms"
   },
   "admin": {
     "login": {
